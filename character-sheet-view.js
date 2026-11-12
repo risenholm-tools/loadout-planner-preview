@@ -8,7 +8,8 @@ function hasGearChange(row) {
 
 function renderRow(groupLabel, row) {
   const changed = hasGearChange(row);
-  const changeClass = parseFloat(row.equipped) < parseFloat(row.base) ? 'lower' : 'higher';
+  const numericValue = value => parseFloat(displayValue(value).replace(/^≈/, ''));
+  const changeClass = numericValue(row.equipped) < numericValue(row.base) ? 'lower' : 'higher';
   const classes = `character-sheet-row${changed ? ` character-sheet-row-${changeClass}` : ''}`;
   const values = `<span class="character-sheet-label">${escape(row.label)}</span>
     <span class="character-sheet-base"><span class="character-sheet-sr-only">Build </span>${escape(displayValue(row.base))}</span>

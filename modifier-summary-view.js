@@ -57,8 +57,8 @@ function renderCharacterTotals(sheet) {
       sources: [row.equippedDetail, row.note].filter(Boolean),
       negative: parseFloat(row.equipped) < 0,
     })).join('');
-    return group.label === 'Combat'
-      ? `<section class="summary-block"><h3 class="summary-label">Combat</h3>${rows}</section>`
+    return ['Combat', 'Saving throws'].includes(group.label)
+      ? `<section class="summary-block"><h3 class="summary-label">${escape(group.label)}</h3>${rows}</section>`
       : renderGroup(group.label, rows);
   });
   if (sheet.unlocks.length) {

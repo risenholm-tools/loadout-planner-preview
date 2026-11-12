@@ -1,36 +1,9 @@
 import { ARCHETYPE_UNLOCK_LEVEL } from './progression.js';
+import { evaluateCharacterAttacks } from './character-attacks.js';
+import { compare, gearStatParts, highest, partsDetail, partsValue, signed } from './character-sheet-values.js';
+import { evaluateCharacterVitals } from './character-vitals.js';
 
 const mod = score => Math.floor((score - 10) / 2);
-const signed = value => value < 0 ? `−${Math.abs(value)}` : `+${value}`;
-
-function partsValue(parts) {
-  return parts.reduce((total, [value]) => total + value, 0);
-}
-
-function partsDetail(parts) {
-  return parts.map(([value, label], index) =>
-    `${value < 0 ? '− ' : index ? '+ ' : ''}${Math.abs(value)} ${label}`).join(' ');
-}
-
-function compare(label, baseParts, equippedParts, { suffix = '', percent = 0, note = '' } = {}) {
-  const base = partsValue(baseParts);
-  const beforePercent = partsValue(equippedParts);
-  const equipped = Number((beforePercent * (1 + percent / 100)).toFixed(2));
-  const percentDetail = percent
-    ? `. ${signed(percent)}% capacity from gear${Number.isInteger(equipped) ? '' : ', before in-game rounding'}`
-    : '';
-  return {
-    label, base: `${base}${suffix}`, equipped: `${equipped}${suffix}`,
-    baseDetail: partsDetail(baseParts),
-    equippedDetail: partsDetail(equippedParts) + percentDetail,
-    note,
-  };
-}
-
-function highest(modifiers, abilities) {
-  const ability = abilities.reduce((best, key) => modifiers[key] > modifiers[best] ? key : best);
-  return [modifiers[ability], ability];
-}
 
 function skillParts(skill, equipped) {
   const parts = [[skill.ranks, 'invested ranks'], [
@@ -62,13 +35,7 @@ export function evaluateCharacterSheet({ plan, evaluation, level, progressionCat
   }).join(' / ');
   const feats = new Set(row.knownFeats);
   const focusBonus = level >= 6 ? 4 : 2;
-  const gearPart = key => {
-    const stat = stats.get(key);
-    if (!stat || (!stat.value && !stat.capped)) return [];
-    const sources = [...new Set(stat.sources.map(source => source.itemLabel))].join(', ');
-    const cap = stat.capped ? `, capped from ${signed(stat.rawValue)}` : '';
-    return [[stat.value, `gear${sources ? ` from ${sources}` : ''}${cap}`]];
-  };
+  const gearPart = key => gearStatParts(stats, key);
   const compareModifiers = (label, parts, gearKey, options) => compare(
     label, parts(buildMod), [...parts(equippedMod), ...gearPart(gearKey)], options,
   );
@@ -105,6 +72,17 @@ export function evaluateCharacterSheet({ plan, evaluation, level, progressionCat
     };
     combat.push(compare('Armor Class', armorParts(buildMod, false), armorParts(equippedMod, true)));
   }
+
+  const survivalRanks = row.skills.find(skill => skill.id === 'survival')?.ranks ?? 0;
+  const { hp, saves } = evaluateCharacterVitals({
+    classCatalog: progressionCatalog.classes, classes, raceId: plan.raceId,
+    feats, survivalRanks, buildMod, equippedMod, stats,
+  });
+  const weaponType = loadout.items.find(item => item.slot === 'weapon')?.weaponType;
+  const weapon = equipmentCatalog.weapons.find(entry => entry.id === weaponType || entry.name === weaponType);
+  combat.push(hp, ...evaluateCharacterAttacks({
+    level, classes, feats, weapon, buildMod, equippedMod, stats, capstone: gear.capstone,
+  }));
 
   const halfLevel = [Math.floor(level / 2), 'half character level'];
   combat.push(compareModifiers('Maneuver DC', modifiers => [[10, 'base'], halfLevel, highest(modifiers, ['STR', 'DEX'])], 'maneuverdc'));
@@ -181,6 +159,11 @@ export function evaluateCharacterSheet({ plan, evaluation, level, progressionCat
 
   return {
     ready: true, level, classSummary, unlocks,
-    groups: [{ label: 'Combat', rows: combat }, { label: 'Resources', rows: resources }, { label: 'Skills', rows: skills }],
+    groups: [
+      { label: 'Combat', rows: combat },
+      { label: 'Saving throws', rows: saves },
+      { label: 'Resources', rows: resources },
+      { label: 'Skills', rows: skills },
+    ],
   };
 }
