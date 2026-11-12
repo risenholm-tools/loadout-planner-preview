@@ -3,6 +3,10 @@ import {loadWikiCatalog} from './wiki-catalog.js';
 import {renderLoadoutImage} from './share-image.js';
 import {embedLoadoutInPng, readLoadoutFromPng} from './png-loadout.js';
 import {normalizePortrait, validatePortrait} from './portrait.js';
+import { evaluateCharacterSheet } from './character-sheet.js';
+import { progressionCatalog } from './progression-catalog.js';
+import { createProgression, evaluateProgression, normalizeProgression } from './progression.js';
+import { refreshProgressionNumbers, renderProgression } from './progression-view.js';
 
 const bundledCatalog = await fetch('./catalog.json').then(r=>{if(!r.ok)throw Error('Could not load the property library.');return r.json();});
 const wiki = loadWikiCatalog(bundledCatalog);
@@ -14,7 +18,8 @@ const escape = v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','
 const signed = v=>`${v>=0?'+':''}${v}`;
 const uid=()=>globalThis.crypto?.randomUUID?.()||`plan-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const STORE=`risenholm.gear-planner.web.v1:${new URL('.', import.meta.url).pathname}`;
-let storageOK=true, libraryQuery='', librarySlot='', libraryKind='positive', view='planner', activeItem='head', history=[], pick=null, numericEdit=null;
+let storageOK=true, libraryQuery='', librarySlot='', libraryKind='positive', view='progression', activeItem='head', history=[], pick=null, numericEdit=null;
+let activeProgressionLevel = 1;
 const now = () => new Date().toISOString();
 const fresh = () => ({...createBuild(), id:uid(), modifiedAt:now()});
 const modifiedFormat = new Intl.DateTimeFormat(undefined, {dateStyle:'medium', timeStyle:'short'});
@@ -34,7 +39,7 @@ const acName=s=>({head:'Armor enchantment',chest:'Armor enchantment',ring:'Natur
 function toast(message){$('#toast').textContent=message;$('#toast').classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').classList.remove('show'),3000);}
 function save(){try{localStorage.setItem(STORE,JSON.stringify(state));storageOK=true;}catch{storageOK=false;}}
 function remember(snapshot=clone(state)){history.push(snapshot);if(history.length>35)history.shift();}
-function mutate(fn, editedLoadout = build()) {
+function mutate(fn, editedLoadout = build(), refresh = render) {
   numericEdit = null;
   const snapshot = clone(state);
   remember(snapshot);
@@ -44,7 +49,7 @@ function mutate(fn, editedLoadout = build()) {
     editedLoadout.modifiedAt = now();
   }
   save();
-  render();
+  refresh();
 }
 function resize(arr,n){return Array.from({length:n},(_,i)=>arr?.[i]??null);}
 function normalizeCounts(it){it.extrinsics=resize(it.extrinsics,it.baseExtrinsics+it.extraExtrinsics);it.disrupted=resize(it.disrupted,it.disruption>0?Math.floor(1+it.disruption/10):0);}
@@ -116,12 +121,29 @@ function heading(){
   </div>`;
 }
 function completeness(it){const arrays=[it.intrinsics,it.extrinsics,it.disrupted];const filled=arrays.flat().filter(Boolean).length;const count=arrays.reduce((n,a)=>n+a.length,0);return {filled,count,done:filled===count&&!!it.core};}
+function progressionView() {
+  const loadout = build();
+  const gear = summarizeBuild(loadout, catalog);
+  const plan = loadout.progression ?? createProgression();
+  const evaluation = evaluateProgression(plan, progressionCatalog, gear);
+  const sheet = evaluateCharacterSheet({
+    plan, evaluation, level: activeProgressionLevel, progressionCatalog,
+    loadout, gear, equipmentCatalog: catalog,
+  });
+  return { plan, evaluation, sheet, catalog: progressionCatalog, activeLevel: activeProgressionLevel };
+}
+
 function render(){
   if (pendingCatalog && !picker.open && !manage.open) {
     ({catalog, status:catalogStatus} = pendingCatalog);
     pendingCatalog = null;
   }
-  document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));const b=build();const sum=summarizeBuild(b,catalog);app.innerHTML=heading()+(view==='planner'?renderPlanner(sum):view==='overview'?renderOverview():view==='catalog'?renderLibrary():renderRules());}
+  document.querySelectorAll('[data-view]').forEach(button => button.classList.toggle('active', button.dataset.view === view));
+  const body = view === 'progression' ? renderProgression(progressionView())
+    : view === 'planner' ? renderPlanner(summarizeBuild(build(), catalog))
+    : view === 'overview' ? renderOverview() : view === 'catalog' ? renderLibrary() : renderRules();
+  app.innerHTML = heading() + body;
+}
 function renderPlanner(sum){const it=item(), ev=evaluateItem(it,catalog);return `<div class="workbench"><aside class="panel loadout"><div class="panel-head"><div class="slot-title">YOUR LOADOUT <span>10</span></div></div><div class="loadout-list">${build().items.map(i=>{const c=completeness(i),e=evaluateItem(i,catalog);return `<button class="slot-button ${i.id===activeItem?'selected':''}" data-action="slot" data-id="${escape(i.id)}" aria-pressed="${i.id===activeItem}">${icon(i.slot)}<span><span class="slot-label">${escape(i.label)}</span><span class="slot-meta">${c.filled}/${c.count} properties · P${i.power}</span></span><span class="dot ${e.errors.length?'error':c.filled?'filled':''}"></span></button>`;}).join('')}</div><div class="build-switch"><button class="subtle small" style="width:100%" data-view="overview">View whole loadout →</button></div></aside><section class="panel editor" aria-label="${escape(it.label)} editor">${renderItem(it,ev)}</section>${renderSummary(sum)}</div>`;}
 function renderItem(it,ev){const warnings=ev.warnings.filter(w=>!w.includes('unfilled')&&!w.startsWith('Core is not selected'));const armor=catalog.armor.find(a=>a.id===it.armorType||a.name===it.armorType),weapon=catalog.weapons.find(w=>w.id===it.weaponType||w.name===it.weaponType);return `<div class="panel-body"><div class="item-heading"><div class="item-icon">${icon(it.slot)}</div><div><h2>${escape(it.label)}</h2><div class="small">${it.slot==='weapon'?'Main-hand weapon':`${acName(it.slot)} AC family`}</div></div><div class="power-tag">+${it.power}<span> / −${it.disruption}</span></div></div><div class="item-fields">${field('Item name · optional',`<input data-field="item-name" value="${escape(it.itemName||'')}" placeholder="Your target ${it.label.toLowerCase()}" maxlength="120">`,true)}${field('Power',`<input type="number" min="0" max="${MAX_POWER}" step="1" data-field="power" value="${it.power}">`)}${field('Disruption',`<input type="number" min="0" max="999" step="1" data-field="disruption" value="${it.disruption}">`)}${it.slot==='chest'?field('Armor base',`<select data-field="armorType">${catalog.armor.map(a=>option(a.name,a.name,it.armorType)).join('')}</select>`,true):''}${it.slot==='weapon'?field('Weapon base',`<select data-field="weaponType">${catalog.weapons.map(w=>option(w.name,w.name,it.weaponType)).join('')}</select>`,true):''}</div>${armor&&it.slot==='chest'?`<div class="small muted">Base AC ${armor.baseAC} · Max DEX +${armor.maxDex} · Check penalty ${armor.checkPenalty} · ${armor.weight} lb</div>`:''}${weapon&&it.slot==='weapon'?`<div class="small muted">${weapon.damage} ${weapon.damageType} · ${weapon.critical}${weapon.finesse?' · Finesse':''}${weapon.notes?` · ${escape(weapon.notes)}`:''}</div>`:''}<div class="capacity"><div class="capacity-line"><span>Extrinsic Capacity</span><strong class="${ev.remainingCapacity<0?'negative':''}">${ev.usedCapacity} / ${ev.capacity} used · ${ev.remainingCapacity} left</strong></div><div class="track"><span style="width:${Math.max(0,Math.min(100,ev.usedCapacity/Math.max(ev.capacity,1)*100))}%;${ev.remainingCapacity<0?'background:var(--negative)':''}"></span></div><div class="capacity-equation">${it.power} Power − ${it.disruption} Disruption − ${it.extraExtrinsics*10} for added slots = ${ev.capacity} Capacity</div></div></div>${ev.errors.length?`<div style="padding:0 20px"><div class="issues">${ev.errors.map(e=>`<p>! ${escape(e)}</p>`).join('')}</div></div>`:''}<div class="section core-section"><div class="section-heading"><h3>CORE BONUS</h3><span class="chip silver">No slot · no Capacity cost</span></div><div class="core-row"><div class="core-gem"><span>+${ev.coreValue}</span></div>${it.slot==='weapon'?`<div class="small">Enhancement Bonus<div class="muted small">Fixed on all weapons</div></div>`:`<select data-field="core" aria-label="Core bonus type">${option('','Choose a core stat…',it.core)}${catalog.core.other.map(c=>option(c,c==='AC'?`AC · ${acName(it.slot)}`:c,it.core)).join('')}</select>`}</div></div>${renderPropertySection(it,ev,'intrinsics','INTRINSIC','Fixed on the item','gold')}${renderPropertySection(it,ev,'extrinsics','EXTRINSIC','Mutable with orbs','green')}${renderPropertySection(it,ev,'disrupted','DISRUPTED','Negative properties','red')}<button class="notes-toggle" data-action="notes">${it.notes?'▾':'+'} Item notes</button><div class="notes-body" ${it.notes?'':'hidden'}><textarea data-field="notes" aria-label="Item notes" placeholder="Current rolls or changes to make…">${escape(it.notes)}</textarea></div>${warnings.length?`<div class="section small muted">${warnings.map(e=>`<p>${escape(e)}</p>`).join('')}</div>`:''}`;}
 function scalingHint(it,row,group){
@@ -260,6 +282,7 @@ async function downloadPng(button) {
   }
 }
 function importBuild(raw){const value=raw.build||raw;if(!value||!Array.isArray(value.items)||value.items.length!==10)throw Error('A plan must have exactly ten equipment items.');const b=fresh();const modified=modifiedDate(value.modifiedAt);
+if (value.progression != null) b.progression = normalizeProgression(value.progression, progressionCatalog);
 if(modified)b.modifiedAt=modified.toISOString();else delete b.modifiedAt;
 b.name=String(value.name||'Imported loadout').slice(0,100);b.notes=String(value.notes||'');if(value.portrait!=null){if(!validatePortrait(value.portrait))throw Error('Invalid character portrait.');b.portrait=value.portrait;}b.items=SLOT_DEFINITIONS.map(def=>{const src=value.items.find(i=>i.id===def.id);if(!src||src.slot!==def.slot)throw Error(`Missing or invalid ${def.label}.`);const it={...createItem(def.slot,def.id),...src,id:def.id,slot:def.slot,label:def.label};for(const k of ['power','disruption','baseExtrinsics','extraExtrinsics']){if(!Number.isInteger(it[k])||it[k]<0||it[k]>100000)throw Error(`Invalid ${k} on ${def.label}.`);}if(it.power>MAX_POWER)throw Error(`Power is capped at ${MAX_POWER}: ${def.label} has Power ${it.power}.`);if(it.disruption>999||it.extraExtrinsics>50||it.baseExtrinsics<1||it.baseExtrinsics>4)throw Error(`Unsupported slot counts on ${def.label}.`);if(!Array.isArray(it.intrinsics)||it.intrinsics.length<1||it.intrinsics.length>3)throw Error('Intrinsic slots must be 1–3.');for(const k of ['intrinsics','extrinsics','disrupted']){if(!Array.isArray(it[k])||it[k].length>1000)throw Error(`Invalid ${k}.`);for(const selection of it[k]){if(selection===null)continue;if(typeof selection!=='object'||Array.isArray(selection))throw Error(`Invalid ${k} property.`);if(selection.custom){const c=selection.custom;if(typeof c!=='object'||typeof c.label!=='string'||!c.label.trim()||(c.detail!==undefined&&typeof c.detail!=='string'))throw Error('Invalid unlisted property.');if(c.capacity!==undefined&&c.capacity!==''&&(!Number.isFinite(Number(c.capacity))||Number(c.capacity)<0))throw Error('Custom Capacity must be nonnegative.');}else if(typeof selection.propertyId!=='string'||(selection.subtype!==undefined&&typeof selection.subtype!=='string')||(selection.rankIndex!==undefined&&(!Number.isInteger(selection.rankIndex)||selection.rankIndex<0))||(selection.rankId!==undefined&&(typeof selection.rankId!=='string'||!selection.rankId||selection.rankId.length>120)))throw Error(`Invalid ${k} selection.`);}}if(it.extrinsics.length!==it.baseExtrinsics+it.extraExtrinsics||it.disrupted.length!==(it.disruption>0?Math.floor(1+it.disruption/10):0))throw Error('Property slots do not match the plan’s counts.');normalizeCounts(it);return it;});return b;}
 
@@ -269,6 +292,88 @@ function setPortraitMenu(control, open) {
   control.querySelector('.portrait-menu').hidden = !open;
   return trigger;
 }
+
+app.addEventListener('click', event => {
+  const level = event.target.closest('[data-progression-level]');
+  if (!level) return;
+  activeProgressionLevel = Number(level.dataset.progressionLevel);
+  render();
+  app.querySelector(`[data-progression-level="${activeProgressionLevel}"]`)?.focus({ preventScroll: true });
+});
+
+function refreshProgressionAllocations() {
+  refreshProgressionNumbers(app, progressionView());
+  app.querySelector('[data-action="undo"]').disabled = !history.length;
+}
+
+function increaseInvestedSkills() {
+  const loadout = build();
+  const plan = loadout.progression;
+  if (!plan) return;
+  const index = activeProgressionLevel - 1;
+  const { skillIncreases, skillRemaining } = evaluateProgression(plan, progressionCatalog).levels[index];
+  if (!skillIncreases.length || (skillRemaining ?? 0) < skillIncreases.length) return;
+
+  const skills = plan.levels[index].skills;
+  mutate(() => {
+    for (const id of skillIncreases) skills[id] = (skills[id] ?? 0) + 1;
+  }, loadout, refreshProgressionAllocations);
+}
+
+function updateProgressionNumber(input, commit) {
+  const { progressionField: field, key } = input.dataset;
+  if (!field || input.type !== 'number') return;
+  const loadout = build();
+  const plan = loadout.progression ?? createProgression();
+  const row = plan.levels[activeProgressionLevel - 1];
+  const values = field === 'skill' ? row.skills : plan[field];
+  const previous = values[key] ?? 0;
+  const parsed = input.valueAsNumber;
+  if (!Number.isInteger(parsed) || parsed < Number(input.min)) {
+    if (commit) input.value = previous;
+    return;
+  }
+  const value = Math.min(parsed, Number(input.max));
+  if (value !== parsed) input.value = value;
+  if (value === previous) return;
+  mutate(() => {
+    values[key] = value;
+    loadout.progression = plan;
+  }, loadout, refreshProgressionAllocations);
+}
+
+app.addEventListener('input', event => {
+  updateProgressionNumber(event.target, false);
+});
+
+app.addEventListener('change', event => {
+  const input = event.target;
+  const { progressionField: field, key } = input.dataset;
+  if (!field) return;
+  if (input.type === 'number') {
+    updateProgressionNumber(input, true);
+    return;
+  }
+  const { value } = input;
+  const plan = build().progression ?? createProgression();
+  const row = plan.levels[activeProgressionLevel - 1];
+  const refocus = document.activeElement === input;
+  mutate(() => {
+    switch (field) {
+      case 'race': plan.raceId = value; break;
+      case 'class': row.classId = value; break;
+      case 'archetype': plan.archetypes[key] = value; break;
+      case 'general-feat': row.generalFeats[Number(key)] = value; break;
+      case 'bonus-feat': row.bonusFeats[Number(key)] = value; break;
+    }
+    build().progression = plan;
+  });
+  if (refocus) {
+    const updated = [...app.querySelectorAll('[data-progression-field]')].find(element =>
+      element.dataset.progressionField === field && element.dataset.key === key);
+    updated?.focus({ preventScroll: true });
+  }
+});
 
 app.addEventListener('pointerover', event => {
   const control = event.target.closest('.portrait-control');
@@ -308,6 +413,9 @@ document.addEventListener('click',async event=>{
     setPortraitMenu(portraitControl, isMouse || el.getAttribute('aria-expanded') === 'false');
     break;
   }
+  case 'increase-invested-skills':
+    increaseInvestedSkills();
+    break;
   case 'choose-portrait':
     if (portraitControl) setPortraitMenu(portraitControl, false).focus();
     $('#portrait-file').click();
@@ -352,7 +460,7 @@ $('#import-file').addEventListener('change', async event => {
     if (!png && file.size > 1000000) throw Error('Plan file is too large.');
     const payload = png ? await readLoadoutFromPng(file) : JSON.parse(await file.text());
     const imported = importBuild(payload);
-    view = 'planner';
+    view = imported.progression ? 'progression' : 'planner';
     manage.close();
     mutate(() => {
       state.builds.push(imported);

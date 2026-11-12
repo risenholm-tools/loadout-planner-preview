@@ -1,0 +1,482 @@
+.progression-layout {
+  display: grid;
+  grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+  align-items: start;
+  gap: 18px;
+  max-width: 1150px;
+  margin-inline: auto;
+}
+
+.progression-layout h2 {
+  margin: 0;
+}
+
+.progression-attributes .panel-head {
+  display: grid;
+  grid-template-columns: 1fr minmax(124px, 150px);
+  align-items: center;
+  gap: 12px;
+}
+
+.progression-layout label select {
+  display: block;
+  margin-top: 4px;
+}
+
+.progression-budgets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.progression-budgets > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 9px 10px;
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+
+.progression-budgets span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.progression-budgets strong,
+.progression-total,
+.progression-skill-budget {
+  color: var(--positive);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.progression-layout .progression-negative {
+  color: var(--negative);
+}
+
+.progression-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.progression-table th,
+.progression-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 7px 5px;
+  text-align: right;
+}
+
+.progression-table thead th {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.progression-table th:first-child,
+.progression-table td:first-child {
+  padding-inline-start: 0;
+  text-align: left;
+}
+
+.progression-table th:last-child,
+.progression-table td:last-child {
+  padding-inline-end: 0;
+}
+
+.progression-table tbody th {
+  font-weight: 500;
+}
+
+.progression-table abbr {
+  text-decoration: none;
+}
+
+.progression-table input {
+  min-height: 36px;
+  padding: 5px;
+  text-align: center;
+}
+
+.progression-table input[aria-invalid="true"],
+.progression-feat-pick select[aria-invalid="true"] {
+  border-color: var(--negative);
+}
+
+.progression-ability-table input {
+  min-width: 44px;
+  max-width: 62px;
+}
+
+.progression-note {
+  margin: 12px 0 0;
+}
+
+.progression-rules {
+  margin: 13px 4px 0;
+}
+
+.progression-rules summary {
+  cursor: pointer;
+  width: fit-content;
+}
+
+.progression-rules p {
+  margin: 8px 0 5px;
+}
+
+.progression-rules a {
+  display: inline-block;
+  margin-inline-end: 10px;
+}
+
+.progression-level-heading {
+  margin-bottom: 14px;
+}
+
+.progression-level-picker {
+  display: grid;
+  grid-template-columns: 3fr 7fr;
+  gap: 14px;
+}
+
+.progression-level-picker > div > div {
+  display: grid;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.progression-creation-levels > div {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.progression-later-levels > div {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.progression-level-button {
+  min-height: 40px;
+  padding: 6px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.progression-level-button[aria-pressed="true"] {
+  border-color: var(--selected-border);
+  background: var(--selected);
+  color: var(--positive);
+  font-weight: 700;
+}
+
+.progression-level-button.progression-level-error {
+  border-color: var(--negative-border);
+  color: var(--negative);
+}
+
+.progression-class-fields,
+.progression-feat-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.progression-feat-fields,
+.progression-granted {
+  margin-top: 14px;
+}
+
+.progression-feat-pick select {
+  margin-top: 4px;
+}
+
+.progression-feat-detail {
+  margin: 6px 0 0;
+}
+
+.progression-granted h3 {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.progression-granted ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.progression-granted li {
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--inset);
+  color: var(--silver);
+  font-size: 12px;
+}
+
+.progression-skill-budget {
+  font-size: 12px;
+}
+
+.progression-skill-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-bottom: 8px;
+}
+
+.progression-skill-table input {
+  width: 64px;
+  margin-inline-start: auto;
+}
+
+.progression-skill-ability,
+.progression-rank-limit {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.progression-skill-ability {
+  margin-inline-start: 4px;
+}
+
+.progression-skill-empty {
+  margin: 0;
+}
+
+@media (max-width: 850px) {
+  .progression-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 680px) {
+  .masthead nav {
+    gap: 8px;
+  }
+
+  .masthead .nav {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .progression-layout {
+    gap: 14px;
+  }
+
+  .progression-layout .panel-head,
+  .progression-layout .panel-body,
+  .progression-layout .section {
+    padding: 15px 12px;
+  }
+
+  .progression-table th,
+  .progression-table td {
+    padding-inline: 3px;
+  }
+
+  .progression-ability-table input {
+    min-width: 36px;
+    padding-inline: 3px;
+  }
+
+  .progression-level-picker {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .progression-creation-levels > div {
+    max-width: 42%;
+  }
+
+  .progression-class-fields,
+  .progression-feat-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .progression-skill-table input {
+    width: 50px;
+  }
+}
+
+@media (max-width: 390px) {
+  .masthead .nav {
+    font-size: 10px;
+  }
+}
+
+.character-sheet-head p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.character-sheet .character-sheet-body {
+  padding-block: 8px;
+}
+
+.character-sheet-group {
+  padding-block: 9px;
+}
+
+.character-sheet-group + .character-sheet-group {
+  border-top: 1px solid var(--border);
+}
+
+.character-sheet summary {
+  position: relative;
+  list-style: none;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.character-sheet summary::-webkit-details-marker {
+  display: none;
+}
+
+.character-sheet summary::before {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 5px;
+  height: 5px;
+  border: solid var(--muted);
+  border-width: 0 1px 1px 0;
+  content: "";
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+.character-sheet details[open] > summary::before {
+  transform: translateY(-65%) rotate(45deg);
+}
+
+.character-sheet summary:hover {
+  background: var(--hover);
+}
+
+.character-sheet summary:focus-visible {
+  outline-offset: -1px;
+}
+
+.character-sheet-group-heading {
+  padding: 5px 4px 5px 16px;
+}
+
+.character-sheet-group-heading h3 {
+  margin: 0;
+  color: var(--silver);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.character-sheet-change-count {
+  margin-inline-start: 7px;
+  color: var(--positive);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.character-sheet-group[open] > summary .character-sheet-change-count {
+  display: none;
+}
+
+.character-sheet-columns,
+.character-sheet-values {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(58px, 24%) minmax(58px, 24%);
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 4px 5px 16px;
+  text-align: right;
+}
+
+.character-sheet-columns {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.character-sheet-values {
+  min-height: 26px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.character-sheet-label {
+  text-align: left;
+}
+
+.character-sheet-base,
+.character-sheet-equipped {
+  color: var(--muted);
+}
+
+.character-sheet-row-higher .character-sheet-equipped {
+  color: var(--positive);
+  font-weight: 700;
+}
+
+.character-sheet-row-lower .character-sheet-equipped {
+  color: var(--negative);
+  font-weight: 700;
+}
+
+.character-sheet-detail {
+  margin: 2px 0 6px 16px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--inset);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.character-sheet-detail dl,
+.character-sheet-detail dd {
+  margin: 0;
+}
+
+.character-sheet-detail dt {
+  color: var(--silver);
+  font-weight: 600;
+}
+
+.character-sheet-detail dl > div + div {
+  margin-top: 5px;
+}
+
+.character-sheet-detail p {
+  margin: 5px 0 0;
+}
+
+.character-sheet-features {
+  margin: 4px 0;
+  padding-inline-start: 29px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.character-sheet-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
