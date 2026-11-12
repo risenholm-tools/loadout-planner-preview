@@ -48,6 +48,23 @@ function attackGearEffects(stats, multiplier) {
   return effects;
 }
 
+function criticalHits(weapon, stats) {
+  const [threat, multiplier] = (weapon.critical ?? '').split('/');
+  if (!threat || !multiplier) return [];
+
+  const range = threat.replace('-', '–');
+  const value = `${range} / ${multiplier.replace(/^x/i, '×')}`;
+  const detail = `${weapon.name} threatens a critical hit on an attack roll of ${range}.`;
+  return [{
+    label: 'Critical hits',
+    base: value,
+    equipped: value,
+    baseDetail: detail,
+    equippedDetail: detail,
+    note: stats.has('massive_crit') ? 'Massive Criticals adds damage on a critical hit.' : '',
+  }];
+}
+
 export function evaluateCharacterAttacks({ level, classes, feats, weapon, buildMod, equippedMod, stats, capstone }) {
   if (!weapon) return [];
 
@@ -65,6 +82,13 @@ export function evaluateCharacterAttacks({ level, classes, feats, weapon, buildM
   if (capstone) equippedAttack.push([capstone, 'capstone attack bonus']);
   const attack = compare('Attack bonus', baseAttack, equippedAttack, {
     note: `Main-hand ${weapon.name}${singleWeaponBonus ? ' with an empty off hand' : ''}.`,
+  });
+  const baseAttacksPerRound = [[2, 'base attacks']];
+  const attacksPerRound = compare('Attacks per round', baseAttacksPerRound, baseAttacksPerRound, {
+    note: [
+      level < 6 ? 'The in-game sheet shows the second base attack starting at level 6.' : '',
+      'Haste adds one attack per round while active.',
+    ].filter(Boolean).join(' '),
   });
 
   const greatWeapon = weapon.kind === 'melee' && weapon.size === 'Large' && feats.has('great-weapon-fighting');
@@ -88,7 +112,7 @@ export function evaluateCharacterAttacks({ level, classes, feats, weapon, buildM
   if (singleWeaponBonus) notes.push('Single Weapon Fighting adds damage based on how far the attack roll exceeds the target’s AC.');
   if (percentBonuses.length) notes.push(`Gear applies ${percentBonuses.join(' and ')} to the normal hit range.`);
   if (effects.length) notes.push(`Additional effects on applicable hits include ${effects.join(', ')}.`);
-  return [attack, {
+  return [attack, attacksPerRound, ...criticalHits(weapon, stats), {
     label: 'Attack damage',
     base: damageRoll(weapon, baseDamage, masteryDice),
     equipped: damageRoll(weapon, equippedDamage, masteryDice),
