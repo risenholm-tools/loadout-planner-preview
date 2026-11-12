@@ -93,7 +93,6 @@ export function evaluateProgression(plan, catalog, gear = {}) {
     const equipped = base + Math.min(10, gear.attributes?.[name] ?? 0);
     return { id, name, creation, intro, base, equipped, modifier: modifier(equipped) };
   });
-  const abilityById = Object.fromEntries(abilities.map(ability => [ability.id, ability]));
   const skillGear = new Map((gear.stats ?? []).filter(stat => stat.key.startsWith('skill:'))
     .map(stat => [stat.key.slice(6), stat.value]));
   const race = catalog.races.find(entry => entry.id === plan.raceId);
@@ -124,8 +123,10 @@ export function evaluateProgression(plan, catalog, gear = {}) {
       ...(archetype?.features?.[classLevel] ?? [])
     ];
     const baseScores = Object.fromEntries(abilities.map(ability => [ability.id, level < 3 ? ability.creation : ability.base]));
-    const statModifiers = Object.fromEntries(abilities.map(ability => [ability.id,
-      level < 3 ? modifier(ability.equipped - ability.intro) : ability.modifier]));
+    const equippedScores = Object.fromEntries(abilities.map(ability =>
+      [ability.id, baseScores[ability.id] + (ability.equipped - ability.base)]));
+    const statModifiers = Object.fromEntries(abilities.map(ability =>
+      [ability.id, modifier(equippedScores[ability.id])]));
 
     for (const id of knownFeats) {
       const upgrade = featById.get(id)?.upgrade;
@@ -186,7 +187,7 @@ export function evaluateProgression(plan, catalog, gear = {}) {
     return {
       level, classId: row.classId, classLevel, features, generalFeats, bonusFeats,
       skillBudget, skillSpent, skillRemaining, skills, errors,
-      classLevels: Object.fromEntries(classLevels), knownFeats: [...knownFeats], baseScores, statModifiers,
+      classLevels: Object.fromEntries(classLevels), knownFeats: [...knownFeats], baseScores, equippedScores, statModifiers,
     };
   });
   // An extra rank here also counts at every later level.

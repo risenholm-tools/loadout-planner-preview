@@ -480,3 +480,78 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+.summary .modifier-level,
+.summary .modifier-setup {
+  margin-top: 12px;
+}
+
+.summary .modifier-level {
+  min-height: 32px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.modifier-ability-mod {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+}
+
+.summary h3.summary-label {
+  font-weight: 500;
+}
+
+.modifier-group > summary {
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+.modifier-group-body {
+  margin-top: 12px;
+}
+
+.modifier-stat > summary .stat-line > span::before {
+  display: inline-block;
+  margin-right: 5px;
+  color: var(--muted);
+  content: '›';
+}
+
+.modifier-stat[open] > summary .stat-line > span::before {
+  transform: rotate(90deg);
+}
+
+.summary .stat-line strong {
+  text-align: right;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.modifier-effects-label {
+  margin-top: 20px;
+}
+
+.modifier-feats {
+  margin: 0;
+  padding-inline-start: 16px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+@media (min-width: 961px) {
+  .summary {
+    max-height: calc(100dvh - 40px);
+    overflow-y: auto;
+  }
+
+  .summary .summary-more {
+    max-height: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .modifier-summary-wide {
+    grid-column: 1 / -1;
+  }
+}
